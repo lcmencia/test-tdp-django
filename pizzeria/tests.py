@@ -116,9 +116,7 @@ def test_pizza_list_view(api_client, create_pizza_with_ingredients):
     create_pizza_with_ingredients(
         "Pepperoni", 12.00, ["Pepperoni", "Cheese", "Tomato Sauce"]
     )
-    create_pizza_with_ingredients(
-        "Hawaiian", 11.00, ["Ham", "Pineapple", "Cheese"]
-    )
+    create_pizza_with_ingredients("Hawaiian", 11.00, ["Ham", "Pineapple", "Cheese"])
 
     url = "/api/pizzas/"
     response = api_client.get(url)
