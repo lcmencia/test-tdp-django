@@ -4,5 +4,11 @@ from .serializers import PizzaSerializer
 
 
 class PizzaListView(generics.ListAPIView):
-    queryset = Pizza.objects.all()
     serializer_class = PizzaSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_authenticated and (user.is_staff or user.is_superuser):
+            return Pizza.objects.all()
+        else:
+            return Pizza.objects.filter(status="active")
