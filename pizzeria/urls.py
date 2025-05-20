@@ -6,6 +6,8 @@ from .views import (
     PizzaUpdateView,
     PizzaAddIngredientView,
     PizzaRemoveIngredientView,
+    IngredientListCreateView,
+    IngredientRetrieveUpdateDestroyView,
 )
 
 urlpatterns = [
@@ -22,5 +24,15 @@ urlpatterns = [
         "pizzas/<int:pk>/remove_ingredient/<int:ingredient_pk>/",
         PizzaRemoveIngredientView.as_view(),
         name="pizza-remove-ingredient",
+    ),
+    path(
+        "ingredients/",
+        IngredientListCreateView.as_view(),
+        name="ingredient-list-create",
+    ),
+    path(
+        "ingredients/<int:pk>/",
+        IngredientRetrieveUpdateDestroyView.as_view(),
+        name="ingredient-detail-update-destroy",
     ),
 ]
