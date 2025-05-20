@@ -6,4 +6,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("auth/", include("authentication.urls")),
     path("api-token-auth/", views.obtain_auth_token, name="obtain-auth-token"),
+    path("api/", include("pizzeria.urls")),
 ]
