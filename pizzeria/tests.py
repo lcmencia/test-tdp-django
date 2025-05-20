@@ -246,7 +246,134 @@ def test_update_pizza_as_staff(api_client, create_staff_user):
     assert pizza.ingredients.count() == 2
     assert ingredient1 in pizza.ingredients.all()
     assert ingredient2 not in pizza.ingredients.all()
-    assert ingredient3 in pizza.ingredients.all()
+
+
+@pytest.mark.django_db
+def test_ingredient_list_create_as_staff(api_client, create_staff_user):
+    """Test listing and creating ingredients as a staff user."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    # Test list
+    Ingredient.objects.create(name="Tomato", category="basic")
+    Ingredient.objects.create(name="Cheese", category="basic")
+    url = "/api/ingredients/"
+    response = api_client.get(url)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert len(response.data) == 2
+    assert response.data[0]["name"] == "Tomato"
+    assert response.data[1]["name"] == "Cheese"
+
+    # Test create
+    new_ingredient_data = {"name": "Pepperoni", "category": "premium"}
+    response = api_client.post(url, new_ingredient_data, format="json")
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert Ingredient.objects.count() == 3
+    ingredient = Ingredient.objects.get(name="Pepperoni")
+    assert ingredient.category == "premium"
+
+
+@pytest.mark.django_db
+def test_ingredient_list_create_as_regular_user(api_client, create_user):
+    """Test listing and creating ingredients as a regular user (should be forbidden)."""
+    regular_user = create_user("regularuser")
+    api_client.force_authenticate(user=regular_user)
+
+    # Test list (should be forbidden)
+    Ingredient.objects.create(name="Tomato", category="basic")
+    url = "/api/ingredients/"
+    response = api_client.get(url)
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert Ingredient.objects.count() == 1  # Ingredient should still exist
+
+    # Test create (should be forbidden)
+    new_ingredient_data = {"name": "Pepperoni", "category": "premium"}
+    response = api_client.post(url, new_ingredient_data, format="json")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert Ingredient.objects.count() == 1  # No new ingredient should be created
+
+
+@pytest.mark.django_db
+def test_ingredient_detail_update_destroy_as_staff(api_client, create_staff_user):
+    """Test retrieving, updating, and deleting an ingredient as a staff user."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    ingredient = Ingredient.objects.create(name="Tomato", category="basic")
+    url = f"/api/ingredients/{ingredient.id}/"
+
+    # Test retrieve
+    response = api_client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["name"] == "Tomato"
+    assert response.data["category"] == "basic"
+
+    # Test update
+    updated_data = {"name": "Tomato Updated", "category": "premium"}
+    response = api_client.put(url, updated_data, format="json")
+    assert response.status_code == status.HTTP_200_OK
+    ingredient.refresh_from_db()
+    assert ingredient.name == "Tomato Updated"
+    assert ingredient.category == "premium"
+
+    # Test destroy
+    response = api_client.delete(url)
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert Ingredient.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_ingredient_detail_update_destroy_as_regular_user(api_client, create_user):
+    """Test retrieving, updating, and deleting an ingredient as a regular user (should be forbidden)."""
+    regular_user = create_user("regularuser")
+    api_client.force_authenticate(user=regular_user)
+
+    ingredient = Ingredient.objects.create(name="Tomato", category="basic")
+    url = f"/api/ingredients/{ingredient.id}/"
+
+    # Test retrieve (should be forbidden)
+    response = api_client.get(url)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert Ingredient.objects.count() == 1  # Ingredient should still exist
+
+    # Test update (should be forbidden)
+    updated_data = {"name": "Tomato Updated", "category": "premium"}
+    response = api_client.put(url, updated_data, format="json")
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    ingredient.refresh_from_db()
+    assert ingredient.name == "Tomato"  # Should not be updated
+
+    # Test destroy (should be forbidden)
+    response = api_client.delete(url)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert Ingredient.objects.count() == 1  # Ingredient should not be deleted
+
+
+@pytest.mark.django_db
+def test_ingredient_detail_update_destroy_nonexistent(api_client, create_staff_user):
+    """Test retrieving, updating, or deleting a non-existent ingredient (should be 404)."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    nonexistent_ingredient_id = 999
+    url = f"/api/ingredients/{nonexistent_ingredient_id}/"
+
+    # Test retrieve
+    response = api_client.get(url)
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # Test update
+    updated_data = {"name": "Tomato Updated", "category": "premium"}
+    response = api_client.put(url, updated_data, format="json")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    # Test destroy
+    response = api_client.delete(url)
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.django_db

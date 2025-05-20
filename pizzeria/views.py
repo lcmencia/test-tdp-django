@@ -11,6 +11,7 @@ from .serializers import (
     PizzaSerializer,
     PizzaDetailSerializer,
     PizzaCreateUpdateSerializer,
+    IngredientSerializer,
 )
 
 
@@ -76,3 +77,15 @@ class PizzaRemoveIngredientView(APIView):
 
         pizza.ingredients.remove(ingredient)
         return Response({"status": "ingredient removed"}, status=status.HTTP_200_OK)
+
+
+class IngredientListCreateView(generics.ListCreateAPIView):
+    queryset = Ingredient.objects.all()
+    serializer_class = IngredientSerializer
+    permission_classes = [IsAdminUser]
+
+
+class IngredientRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Ingredient.objects.all()
+    serializer_class = IngredientSerializer
+    permission_classes = [IsAdminUser]
