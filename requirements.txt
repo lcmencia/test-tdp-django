@@ -4,6 +4,7 @@ psycopg2-binary==2.9.10
 python-dotenv
 djangorestframework-simplejwt
 pytest
+pytest-django==4.8.0 
 black
 flake8
 pre-commit
