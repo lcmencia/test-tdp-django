@@ -7,7 +7,7 @@ class PizzaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Pizza
-        fields = ["name", "price", "ingredients_count"]
+        fields = ["name", "price", "ingredients_count", "status"]
 
     def get_ingredients_count(self, obj):
         return obj.ingredients.count()

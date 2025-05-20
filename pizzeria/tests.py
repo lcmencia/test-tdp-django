@@ -75,14 +75,7 @@ def test_pizza_status_choices():
     pizza.save()
     assert pizza.status == "inactive"
 
-    # Test invalid status (this should ideally be handled by forms/serializers,
-    # but testing model-level constraint if applicable, though Django CharField
-    # with choices doesn't enforce this at DB level by default)
-    # For a true constraint test, a CheckConstraint would be needed in the model.
-    # We can simulate a potential issue or test the choices definition.
-    # This part is more conceptual for model constraints without CheckConstraint.
-    # A more practical test would be at the serializer/form level.
-    pass  # Skipping strict invalid status test at model level without CheckConstraint
+    pass
 
 
 # Example of testing a constraint if one existed, e.g., unique name
@@ -105,7 +98,7 @@ def test_pizza_serializer():
     data = serializer.data
 
     assert data["name"] == "Margherita"
-    assert data["price"] == "10.50"  # Price is returned as a string
+    assert data["price"] == "10.50"
     assert data["ingredients_count"] == 2
 
 
@@ -124,17 +117,14 @@ def test_pizza_list_view(api_client, create_pizza_with_ingredients):
     assert response.status_code == status.HTTP_200_OK
     assert len(response.data) == 3
 
-    # Check data for pizza1
     pizza1_data = next(item for item in response.data if item["name"] == "Margherita")
     assert pizza1_data["price"] == "10.50"
     assert pizza1_data["ingredients_count"] == 2
 
-    # Check data for pizza2
     pizza2_data = next(item for item in response.data if item["name"] == "Pepperoni")
     assert pizza2_data["price"] == "12.00"
     assert pizza2_data["ingredients_count"] == 3
 
-    # Check data for pizza3
     pizza3_data = next(item for item in response.data if item["name"] == "Hawaiian")
     assert pizza3_data["price"] == "11.00"
     assert pizza3_data["ingredients_count"] == 3
