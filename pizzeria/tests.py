@@ -1,14 +1,39 @@
 import pytest
 from rest_framework.test import APIClient
 from rest_framework import status
+from django.contrib.auth import get_user_model
 from .models import Pizza, Ingredient
 from .serializers import PizzaSerializer
+
+User = get_user_model()
 
 
 @pytest.fixture
 def api_client():
     """Fixture for API client."""
     return APIClient()
+
+
+@pytest.fixture
+def create_user():
+    """Fixture to create a regular user."""
+
+    def _create_user(username, password="password"):
+        return User.objects.create_user(username=username, password=password)
+
+    return _create_user
+
+
+@pytest.fixture
+def create_staff_user():
+    """Fixture to create a staff user."""
+
+    def _create_staff_user(username, password="password"):
+        return User.objects.create_user(
+            username=username, password=password, is_staff=True
+        )
+
+    return _create_staff_user
 
 
 @pytest.fixture
@@ -138,3 +163,275 @@ def test_pizza_list_view_no_pizzas(api_client):
 
     assert response.status_code == status.HTTP_200_OK
     assert len(response.data) == 0
+
+
+@pytest.mark.django_db
+def test_create_pizza_as_staff(api_client, create_staff_user):
+    """Test creating a pizza as a staff user."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    ingredient1 = Ingredient.objects.create(name="Tomato")
+    ingredient2 = Ingredient.objects.create(name="Cheese")
+
+    pizza_data = {
+        "name": "Veggie",
+        "price": 15.00,
+        "status": "active",
+        "ingredients": [ingredient1.id, ingredient2.id],
+    }
+    url = "/api/pizzas/create/"
+    response = api_client.post(url, pizza_data, format="json")
+
+    assert response.status_code == status.HTTP_201_CREATED
+    assert Pizza.objects.count() == 1
+    pizza = Pizza.objects.first()
+    assert pizza.name == "Veggie"
+    assert pizza.price == 15.00
+    assert pizza.status == "active"
+    assert pizza.ingredients.count() == 2
+    assert ingredient1 in pizza.ingredients.all()
+    assert ingredient2 in pizza.ingredients.all()
+
+
+@pytest.mark.django_db
+def test_create_pizza_as_regular_user(api_client, create_user):
+    """Test creating a pizza as a regular user (should be forbidden)."""
+    regular_user = create_user("regularuser")
+    api_client.force_authenticate(user=regular_user)
+
+    ingredient1 = Ingredient.objects.create(name="Tomato")
+    ingredient2 = Ingredient.objects.create(name="Cheese")
+
+    pizza_data = {
+        "name": "Veggie",
+        "price": 15.00,
+        "status": "active",
+        "ingredients": [ingredient1.id, ingredient2.id],
+    }
+    url = "/api/pizzas/create/"
+    response = api_client.post(url, pizza_data, format="json")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert Pizza.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_update_pizza_as_staff(api_client, create_staff_user):
+    """Test updating a pizza as a staff user."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    ingredient1 = Ingredient.objects.create(name="Tomato")
+    ingredient2 = Ingredient.objects.create(name="Cheese")
+    ingredient3 = Ingredient.objects.create(name="Pepperoni")
+
+    pizza = Pizza.objects.create(name="Margherita", price=10.50, status="active")
+    pizza.ingredients.add(ingredient1, ingredient2)
+
+    updated_data = {
+        "name": "Margherita Updated",
+        "price": 11.00,
+        "status": "inactive",
+        "ingredients": [ingredient1.id, ingredient3.id],
+    }
+    url = f"/api/pizzas/{pizza.id}/update/"
+    response = api_client.put(url, updated_data, format="json")
+
+    assert response.status_code == status.HTTP_200_OK
+    pizza.refresh_from_db()
+    assert pizza.name == "Margherita Updated"
+    assert pizza.price == 11.00
+    assert pizza.status == "inactive"
+    assert pizza.ingredients.count() == 2
+    assert ingredient1 in pizza.ingredients.all()
+    assert ingredient2 not in pizza.ingredients.all()
+    assert ingredient3 in pizza.ingredients.all()
+
+
+@pytest.mark.django_db
+def test_update_pizza_as_regular_user(api_client, create_user):
+    """Test updating a pizza as a regular user (should be forbidden)."""
+    regular_user = create_user("regularuser")
+    api_client.force_authenticate(user=regular_user)
+
+    pizza = Pizza.objects.create(name="Margherita", price=10.50, status="active")
+
+    updated_data = {
+        "name": "Margherita Updated",
+        "price": 11.00,
+        "status": "inactive",
+        "ingredients": [],
+    }
+    url = f"/api/pizzas/{pizza.id}/update/"
+    response = api_client.put(url, updated_data, format="json")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    pizza.refresh_from_db()
+    assert pizza.name == "Margherita"
+    assert pizza.price == 10.50
+    assert pizza.status == "active"
+
+
+@pytest.mark.django_db
+def test_add_ingredient_as_staff(api_client, create_staff_user):
+    """Test adding an ingredient to a pizza as a staff user."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    pizza = Pizza.objects.create(name="Margherita", price=10.50)
+    ingredient1 = Ingredient.objects.create(name="Tomato")
+    ingredient2 = Ingredient.objects.create(name="Cheese")
+    pizza.ingredients.add(ingredient1)
+
+    url = f"/api/pizzas/{pizza.id}/add_ingredient/{ingredient2.id}/"
+    response = api_client.post(url)
+
+    assert response.status_code == status.HTTP_200_OK
+    pizza.refresh_from_db()
+    assert pizza.ingredients.count() == 2
+    assert ingredient1 in pizza.ingredients.all()
+    assert ingredient2 in pizza.ingredients.all()
+
+
+@pytest.mark.django_db
+def test_add_ingredient_as_regular_user(api_client, create_user):
+    """Test adding an ingredient as a regular user (should be forbidden)."""
+    regular_user = create_user("regularuser")
+    api_client.force_authenticate(user=regular_user)
+
+    pizza = Pizza.objects.create(name="Margherita", price=10.50)
+    ingredient = Ingredient.objects.create(name="Tomato")
+
+    url = f"/api/pizzas/{pizza.id}/add_ingredient/{ingredient.id}/"
+    response = api_client.post(url)
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    pizza.refresh_from_db()
+    assert pizza.ingredients.count() == 0
+
+
+@pytest.mark.django_db
+def test_add_nonexistent_ingredient(api_client, create_staff_user):
+    """Test adding a non-existent ingredient (should be 404)."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    pizza = Pizza.objects.create(name="Margherita", price=10.50)
+    nonexistent_ingredient_id = 999
+
+    url = f"/api/pizzas/{pizza.id}/add_ingredient/{nonexistent_ingredient_id}/"
+    response = api_client.post(url)
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    pizza.refresh_from_db()
+    assert pizza.ingredients.count() == 0
+
+
+@pytest.mark.django_db
+def test_add_ingredient_to_nonexistent_pizza(api_client, create_staff_user):
+    """Test adding an ingredient to a non-existent pizza (should be 404)."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    ingredient = Ingredient.objects.create(name="Tomato")
+    nonexistent_pizza_id = 999
+
+    url = f"/api/pizzas/{nonexistent_pizza_id}/add_ingredient/{ingredient.id}/"
+    response = api_client.post(url)
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert Pizza.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_remove_ingredient_as_staff(api_client, create_staff_user):
+    """Test removing an ingredient from a pizza as a staff user."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    pizza = Pizza.objects.create(name="Margherita", price=10.50)
+    ingredient1 = Ingredient.objects.create(name="Tomato")
+    ingredient2 = Ingredient.objects.create(name="Cheese")
+    pizza.ingredients.add(ingredient1, ingredient2)
+
+    url = f"/api/pizzas/{pizza.id}/remove_ingredient/{ingredient2.id}/"
+    response = api_client.delete(url)
+
+    assert response.status_code == status.HTTP_200_OK
+    pizza.refresh_from_db()
+    assert pizza.ingredients.count() == 1
+    assert ingredient1 in pizza.ingredients.all()
+    assert ingredient2 not in pizza.ingredients.all()
+
+
+@pytest.mark.django_db
+def test_remove_ingredient_as_regular_user(api_client, create_user):
+    """Test removing an ingredient as a regular user (should be forbidden)."""
+    regular_user = create_user("regularuser")
+    api_client.force_authenticate(user=regular_user)
+
+    pizza = Pizza.objects.create(name="Margherita", price=10.50)
+    ingredient1 = Ingredient.objects.create(name="Tomato")
+    pizza.ingredients.add(ingredient1)
+
+    url = f"/api/pizzas/{pizza.id}/remove_ingredient/{ingredient1.id}/"
+    response = api_client.delete(url)
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    pizza.refresh_from_db()
+    assert pizza.ingredients.count() == 1
+
+
+@pytest.mark.django_db
+def test_remove_nonexistent_ingredient(api_client, create_staff_user):
+    """Test removing a non-existent ingredient (should be 404)."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    pizza = Pizza.objects.create(name="Margherita", price=10.50)
+    nonexistent_ingredient_id = 999
+
+    url = f"/api/pizzas/{pizza.id}/remove_ingredient/{nonexistent_ingredient_id}/"
+    response = api_client.delete(url)
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    pizza.refresh_from_db()
+    assert pizza.ingredients.count() == 0
+
+
+@pytest.mark.django_db
+def test_remove_ingredient_from_nonexistent_pizza(api_client, create_staff_user):
+    """Test removing an ingredient from a non-existent pizza (should be 404)."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    ingredient = Ingredient.objects.create(name="Tomato")
+    nonexistent_pizza_id = 999
+
+    url = f"/api/pizzas/{nonexistent_pizza_id}/remove_ingredient/{ingredient.id}/"
+    response = api_client.delete(url)
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert Pizza.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_remove_ingredient_not_on_pizza(api_client, create_staff_user):
+    """Test removing an ingredient that is not on the pizza (should be 200 OK, no change)."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    pizza = Pizza.objects.create(name="Margherita", price=10.50)
+    ingredient1 = Ingredient.objects.create(name="Tomato")
+    ingredient2 = Ingredient.objects.create(name="Cheese")
+    pizza.ingredients.add(ingredient1)
+
+    url = f"/api/pizzas/{pizza.id}/remove_ingredient/{ingredient2.id}/"
+    response = api_client.delete(url)
+
+    assert response.status_code == status.HTTP_200_OK
+    pizza.refresh_from_db()
+    assert pizza.ingredients.count() == 1
+    assert ingredient1 in pizza.ingredients.all()
+    assert ingredient2 not in pizza.ingredients.all()

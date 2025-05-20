@@ -25,3 +25,9 @@ class PizzaDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pizza
         fields = ["name", "price", "status", "ingredients"]
+
+
+class PizzaCreateUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pizza
+        fields = ["name", "price", "status", "ingredients"]
