@@ -103,14 +103,6 @@ def test_pizza_status_choices():
     pass
 
 
-# Example of testing a constraint if one existed, e.g., unique name
-# @pytest.mark.django_db
-# def test_unique_pizza_name_constraint():
-#     Pizza.objects.create(name='Margherita', price=10.50)
-#     with pytest.raises(IntegrityError):
-#         Pizza.objects.create(name='Margherita', price=11.00)
-
-
 @pytest.mark.django_db
 def test_pizza_serializer():
     """Test the PizzaSerializer."""
@@ -249,12 +241,35 @@ def test_update_pizza_as_staff(api_client, create_staff_user):
 
 
 @pytest.mark.django_db
+def test_prevent_delete_ingredient_in_use(api_client, create_staff_user):
+    """Test preventing deletion of an ingredient used by a pizza."""
+    staff_user = create_staff_user("staffuser")
+    api_client.force_authenticate(user=staff_user)
+
+    ingredient = Ingredient.objects.create(name="Tomato", category="basic")
+    pizza = Pizza.objects.create(name="Margherita", price=10.50)
+    pizza.ingredients.add(ingredient)
+
+    url = f"/api/ingredients/{ingredient.id}/"
+    response = api_client.delete(url)
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert (
+        "Cannot delete ingredient as it is used by one or more pizzas."
+        in response.data["non_field_errors"][0]
+    )
+    assert Ingredient.objects.count() == 1
+    assert Pizza.objects.count() == 1
+    pizza.refresh_from_db()
+    assert ingredient in pizza.ingredients.all()
+
+
+@pytest.mark.django_db
 def test_ingredient_list_create_as_staff(api_client, create_staff_user):
     """Test listing and creating ingredients as a staff user."""
     staff_user = create_staff_user("staffuser")
     api_client.force_authenticate(user=staff_user)
 
-    # Test list
     Ingredient.objects.create(name="Tomato", category="basic")
     Ingredient.objects.create(name="Cheese", category="basic")
     url = "/api/ingredients/"
@@ -265,7 +280,6 @@ def test_ingredient_list_create_as_staff(api_client, create_staff_user):
     assert response.data[0]["name"] == "Tomato"
     assert response.data[1]["name"] == "Cheese"
 
-    # Test create
     new_ingredient_data = {"name": "Pepperoni", "category": "premium"}
     response = api_client.post(url, new_ingredient_data, format="json")
 
@@ -281,20 +295,18 @@ def test_ingredient_list_create_as_regular_user(api_client, create_user):
     regular_user = create_user("regularuser")
     api_client.force_authenticate(user=regular_user)
 
-    # Test list (should be forbidden)
     Ingredient.objects.create(name="Tomato", category="basic")
     url = "/api/ingredients/"
     response = api_client.get(url)
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert Ingredient.objects.count() == 1  # Ingredient should still exist
+    assert Ingredient.objects.count() == 1
 
-    # Test create (should be forbidden)
     new_ingredient_data = {"name": "Pepperoni", "category": "premium"}
     response = api_client.post(url, new_ingredient_data, format="json")
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert Ingredient.objects.count() == 1  # No new ingredient should be created
+    assert Ingredient.objects.count() == 1
 
 
 @pytest.mark.django_db
@@ -306,13 +318,11 @@ def test_ingredient_detail_update_destroy_as_staff(api_client, create_staff_user
     ingredient = Ingredient.objects.create(name="Tomato", category="basic")
     url = f"/api/ingredients/{ingredient.id}/"
 
-    # Test retrieve
     response = api_client.get(url)
     assert response.status_code == status.HTTP_200_OK
     assert response.data["name"] == "Tomato"
     assert response.data["category"] == "basic"
 
-    # Test update
     updated_data = {"name": "Tomato Updated", "category": "premium"}
     response = api_client.put(url, updated_data, format="json")
     assert response.status_code == status.HTTP_200_OK
@@ -320,7 +330,6 @@ def test_ingredient_detail_update_destroy_as_staff(api_client, create_staff_user
     assert ingredient.name == "Tomato Updated"
     assert ingredient.category == "premium"
 
-    # Test destroy
     response = api_client.delete(url)
     assert response.status_code == status.HTTP_204_NO_CONTENT
     assert Ingredient.objects.count() == 0
@@ -335,22 +344,19 @@ def test_ingredient_detail_update_destroy_as_regular_user(api_client, create_use
     ingredient = Ingredient.objects.create(name="Tomato", category="basic")
     url = f"/api/ingredients/{ingredient.id}/"
 
-    # Test retrieve (should be forbidden)
     response = api_client.get(url)
     assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert Ingredient.objects.count() == 1  # Ingredient should still exist
+    assert Ingredient.objects.count() == 1
 
-    # Test update (should be forbidden)
     updated_data = {"name": "Tomato Updated", "category": "premium"}
     response = api_client.put(url, updated_data, format="json")
     assert response.status_code == status.HTTP_403_FORBIDDEN
     ingredient.refresh_from_db()
-    assert ingredient.name == "Tomato"  # Should not be updated
+    assert ingredient.name == "Tomato"
 
-    # Test destroy (should be forbidden)
     response = api_client.delete(url)
     assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert Ingredient.objects.count() == 1  # Ingredient should not be deleted
+    assert Ingredient.objects.count() == 1
 
 
 @pytest.mark.django_db
@@ -362,16 +368,13 @@ def test_ingredient_detail_update_destroy_nonexistent(api_client, create_staff_u
     nonexistent_ingredient_id = 999
     url = f"/api/ingredients/{nonexistent_ingredient_id}/"
 
-    # Test retrieve
     response = api_client.get(url)
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    # Test update
     updated_data = {"name": "Tomato Updated", "category": "premium"}
     response = api_client.put(url, updated_data, format="json")
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    # Test destroy
     response = api_client.delete(url)
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -537,7 +540,7 @@ def test_remove_ingredient_from_nonexistent_pizza(api_client, create_staff_user)
     nonexistent_pizza_id = 999
 
     url = f"/api/pizzas/{nonexistent_pizza_id}/remove_ingredient/{ingredient.id}/"
-    response = api_client.delete(url)
+    response = api_client.post(url)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert Pizza.objects.count() == 0
