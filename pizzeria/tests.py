@@ -239,7 +239,7 @@ def test_update_pizza_as_staff(api_client, create_staff_user):
     assert ingredient1 in pizza.ingredients.all()
     assert ingredient2 not in pizza.ingredients.all()
 
- 
+
 @pytest.mark.django_db
 def test_prevent_delete_ingredient_in_use(api_client, create_staff_user):
     """Test preventing deletion of an ingredient used by a pizza."""
