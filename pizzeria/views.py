@@ -24,8 +24,12 @@ class PizzaDetailView(generics.RetrieveAPIView):
         instance = self.get_object()
         user = request.user
 
-        if instance.status == 'inactive' and not (user.is_authenticated and (user.is_staff or user.is_superuser)):
-            raise PermissionDenied("You do not have permission to view inactive pizzas.")
+        if instance.status == "inactive" and not (
+            user.is_authenticated and (user.is_staff or user.is_superuser)
+        ):
+            raise PermissionDenied(
+                "You do not have permission to view inactive pizzas."
+            )
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)

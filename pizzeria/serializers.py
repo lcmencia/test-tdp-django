@@ -5,7 +5,8 @@ from .models import Pizza, Ingredient
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
-        fields = ['name']
+        fields = ["name"]
+
 
 class PizzaSerializer(serializers.ModelSerializer):
     ingredients_count = serializers.SerializerMethodField()
@@ -16,6 +17,7 @@ class PizzaSerializer(serializers.ModelSerializer):
 
     def get_ingredients_count(self, obj):
         return obj.ingredients.count()
+
 
 class PizzaDetailSerializer(serializers.ModelSerializer):
     ingredients = IngredientSerializer(many=True, read_only=True)
