@@ -256,7 +256,7 @@ def test_prevent_delete_ingredient_in_use(api_client, create_staff_user):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert (
         "Cannot delete ingredient as it is used by one or more pizzas."
-        in response.data["non_field_errors"][0]
+        in response.content.decode("utf-8")
     )
     assert Ingredient.objects.count() == 1
     assert Pizza.objects.count() == 1
