@@ -5,7 +5,7 @@ from .models import Pizza, Ingredient
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
-        fields = ["id", "name", "category"]  # Add 'id' and 'category' for CRUD
+        fields = ["id", "name", "category"]
 
 
 class PizzaSerializer(serializers.ModelSerializer):
