@@ -1,6 +1,6 @@
 # TEST para TDP S.A.
 
-Una descripción concisa de tu proyecto Django.
+Aplicación API construida con Django, centrada en la gestión de una pizzería. Incluye módulos para autenticación y funcionalidades específicas de pizzería
 
 ## Tabla de Contenidos
 
@@ -78,13 +78,7 @@ Si prefieres configurar el proyecto manualmente, sigue estos pasos:
 2.  **Generar SECRET_KEY (si no existe):**
     Si el archivo `.env` no contiene una línea que comience con `SECRET_KEY=`, puedes generar una usando Python y añadirla al archivo. Ejecuta el siguiente comando en la raíz del proyecto:
     ```bash
-    python -c '
-import random
-import string
-chars = string.ascii_letters + string.digits + string.punctuation
-secret_key = "".join(random.choice(chars) for i in range(50))
-print(f"SECRET_KEY={secret_key}")
-' >> .env
+    python -c 'import random; import string; chars = string.ascii_letters + string.digits + string.punctuation; secret_key = "".join(random.choice(chars) for i in range(50)); print(f"SECRET_KEY={secret_key}")' >> .env
     ```
     *(Este comando funciona tanto en Bash como en PowerShell si Python está en el PATH)*.
 
