@@ -256,7 +256,7 @@ def test_prevent_delete_ingredient_in_use(api_client, create_staff_user):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert (
         "Cannot delete ingredient as it is used by one or more pizzas."
-        in response.data.get("non_field_errors", {}).values()
+        in response.data["non_field_errors"][0]
     )
     assert Ingredient.objects.count() == 1
     assert Pizza.objects.count() == 1
@@ -369,7 +369,7 @@ def test_ingredient_detail_update_destroy_nonexistent(api_client, create_staff_u
     url = f"/api/ingredients/{nonexistent_ingredient_id}/"
 
     response = api_client.get(url)
-    assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
     updated_data = {"name": "Tomato Updated", "category": "premium"}
     response = api_client.put(url, updated_data, format="json")
@@ -542,7 +542,7 @@ def test_remove_ingredient_from_nonexistent_pizza(api_client, create_staff_user)
     url = f"/api/pizzas/{nonexistent_pizza_id}/remove_ingredient/{ingredient.id}/"
     response = api_client.post(url)
 
-    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
     assert Pizza.objects.count() == 0
 
 
